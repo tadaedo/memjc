@@ -1,0 +1,23 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+[compileJava, compileTestJava]*.sourceCompatibility = '1.7'
+[compileJava, compileTestJava]*.targetCompatibility = '1.7'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+if (!hasProperty('mainClass')) {
+    ext.mainClass = 'org.tadaedo.memjc.Main'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'com.google.jimfs:jimfs:1.0'
+}
+
+jar {
+   from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+   manifest { attributes 'Main-Class': 'org.tadaedo.memjc.Main' }
+}
