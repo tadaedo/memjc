@@ -122,7 +122,9 @@ public class Compiler {
                         @Override
                         public OutputStream openOutputStream() throws IOException {
 
-                            return getOutputStream(sibling.toUri());
+                            Path path = Paths.get(sibling.toUri());
+                            Path parentPath = path.getParent();
+                            return getOutputStream(parentPath.toUri(), className);
                         }
 
                         @Override
@@ -192,14 +194,14 @@ public class Compiler {
         }
     }
 
-    private OutputStream getOutputStream(URI uri) throws IOException {
+    private OutputStream getOutputStream(URI uri, String className) throws IOException {
 
         if (this.memJcOut) {
             // relative path
             Path classPath = Paths.get(uri);
             Path classRoot = classPath.getRoot();
             if (classRoot != null) {
-                String fullPath = classPath.toString().replace(".java", ".class");
+                String fullPath = classPath.resolve(className + ".class").toString();
                 String mfsPath = fullPath;
                 if (isWindows()) {
                     mfsPath = mfsPath.replaceFirst(":", "");
