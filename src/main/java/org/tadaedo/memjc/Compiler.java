@@ -15,8 +15,6 @@
  */
 package org.tadaedo.memjc;
 
-import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Jimfs;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,15 +22,10 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.FileObject;
@@ -44,17 +37,18 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
-public class Compiler {
+public final class Compiler {
 
-    private final boolean memJcOut;
+    private final boolean cacheClass;
 
-    private final String MFS_ROOT_PATH = "classes";
-    private final Map<String, String> pathMap = new HashMap<>();
-    private FileSystem mfs;
+    public Compiler() {
 
-    public Compiler(boolean memJcOut) {
+        this(false);
+    }
 
-        this.memJcOut = memJcOut;
+    public Compiler(boolean cacheClass) {
+
+        this.cacheClass = cacheClass;
     }
 
     public boolean compile(List<String> opts, List<String> filePaths) throws IOException {
@@ -71,36 +65,10 @@ public class Compiler {
 
     private void beforeCompiler() {
 
-        if (this.memJcOut) {
-            Configuration config;
-            if (isWindows()) {
-                config = Configuration.windows();
-            } else {
-                config = Configuration.unix();
-            }
-            mfs = Jimfs.newFileSystem(config);
-        } else {
-            mfs = null;
-        }
     }
 
     private void afterCompiler() throws IOException {
 
-        if (this.memJcOut) {
-            for (String fullPath : pathMap.keySet()) {
-                String mfsPath = pathMap.get(fullPath);
-
-                Path path = mfs.getPath(MFS_ROOT_PATH);
-                path = path.resolve(mfsPath);
-
-                // memory fs to default fs
-                Files.copy(path, Paths.get(fullPath), StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
-    }
-
-    private boolean isWindows() {
-        return File.separatorChar == '\\';
     }
 
     private CompilationTask getTask(final List<String> opts, final List<String> filePaths) throws IOException {
@@ -124,7 +92,16 @@ public class Compiler {
 
                             Path path = Paths.get(sibling.toUri());
                             Path parentPath = path.getParent();
-                            return getOutputStream(parentPath.toUri(), className);
+
+                            OutputStream stream = null;
+                            if (cacheClass) {
+                                stream = ClassManager.getOutputStream(parentPath.toUri(), className);
+                            }
+
+                            if (stream == null) {
+                                stream = getEmptyOutputStream();
+                            }
+                            return stream;
                         }
 
                         @Override
@@ -194,38 +171,13 @@ public class Compiler {
         }
     }
 
-    private OutputStream getOutputStream(URI uri, String className) throws IOException {
+    private OutputStream getEmptyOutputStream() {
 
-        if (this.memJcOut) {
-            // relative path
-            Path classPath = Paths.get(uri);
-            Path classRoot = classPath.getRoot();
-            if (classRoot != null) {
-                String fullPath = classPath.resolve(className + ".class").toString();
-                String mfsPath = fullPath;
-                if (isWindows()) {
-                    mfsPath = mfsPath.replaceFirst(":", "");
-                } else {
-                    mfsPath = mfsPath.replace(classRoot.toString(), "");
-                }
-                classPath = mfs.getPath(mfsPath);
-                // save map path
-                pathMap.put(fullPath, mfsPath);
+        return new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
             }
-            // full path
-            Path path = mfs.getPath(MFS_ROOT_PATH);
-            path = path.resolve(classPath);
-            if (path.getParent() != null && !Files.isDirectory(path.getParent())) {
-                Files.createDirectories(path.getParent());
-            }
-            return Files.newOutputStream(Files.createFile(path));
-        } else {
-            return new OutputStream() {
-                @Override
-                public void write(int b) throws IOException {
-                }
-            };
-        }
+        };
     }
 
     private Iterable<? extends JavaFileObject> getUnits(StandardJavaFileManager fs, List<String> filePaths) {

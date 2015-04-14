@@ -1,3 +1,4 @@
 #!/bin/sh
 
-java -jar `dirname $0`/../build/libs/memjc.jar $@
+memjcpath=`readlink -f $0`
+java -jar `dirname $memjcpath`/../build/libs/memjc.jar $@

@@ -15,21 +15,50 @@
  */
 package org.tadaedo.memjc;
 
-public class Main {
+public final class Main {
+
+    static {
+        // regist memjc protocol
+        Handler.regist();
+    }
 
     public static void main(String[] args) {
 
+        run(args);
+    }
+
+    public static void run(String[] args) {
+
+        Options options = new Options();
+
         try {
-
-            Options options = new Options();
-            options.setOptions(args);
-
-            Compiler compiler = new Compiler(options.memJcOut);
-            compiler.compile(options.opts, options.files);
-
+            if (!options.setOptions(args)) {
+                return;
+            }
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
             Options.showUsage();
+            return;
+        }
+
+        try {
+
+            Compiler compiler = new Compiler(options.memJcOut || options.memJcRun);
+            compiler.compile(options.opts, options.files);
+
+            if (options.memJcOut) {
+                ClassManager.outputAllFile();
+            }
+
+            if (options.memJcRun) {
+
+                Runner runner = new Runner();
+                runner.execute(options.memJcRunClassName, options.memJcClassArgs,
+                        options.memJcClassPaths);
+            }
+
+        } catch (Exception ex) {
+            System.out.println(ex.toString());
         }
     }
 }

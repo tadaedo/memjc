@@ -17,15 +17,21 @@ package org.tadaedo.memjc;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-public class Options {
+public final class Options {
 
-    private static final String MEMJC_PREFIX = "-memjc";
+    private static final String MEMJC_VERSION = "1.1";
+
+    private static final String MEMJC_PREFIX = "-M";
+    private static final String MEMJC_OPTION_HELP = MEMJC_PREFIX + "help";
+    private static final String MEMJC_OPTION_OUT = MEMJC_PREFIX + "out";
+    private static final String MEMJC_OPTION_RUN = MEMJC_PREFIX + "main";
+    private static final String MEMJC_OPTION_CLASSPATH = MEMJC_PREFIX + "cp";
 
     public enum Type {
         JAVAFILE,
@@ -34,20 +40,49 @@ public class Options {
         OPTION
     }
 
+    // javac options
     public final List<String> opts = new ArrayList<>();
     public final List<String> files = new ArrayList<>();
-    public boolean memJcOut;
 
-    public void setOptions(String[] args) throws IOException {
+    // memjc options
+    public boolean memJcOut = false;
+    public boolean memJcRun = false;
+    public String memJcRunClassName = "";
+    public final List<String> memJcClassArgs = new ArrayList<>();
+    public final List<String> memJcClassPaths = new ArrayList<>();
+
+    public boolean setOptions(String[] args) throws IOException {
 
         for (String arg : args) {
             switch (isType(arg)) {
             case MEMJCOPTION:
-                switch (arg) {
-                case MEMJC_PREFIX + "-out":
-                    this.memJcOut = true; break;
+                String[] memArgs = arg.split(":", 2);
+                switch (memArgs[0]) {
+                case MEMJC_OPTION_HELP:
+                    showUsage();
+                    return false;
+                case MEMJC_OPTION_OUT:
+                    memJcOut = true;
+                    break;
+                case MEMJC_OPTION_RUN:
+                    memJcRun = true;
+                    if (memArgs.length >= 2) {
+                        String[] memClass = memArgs[1].split(":", 2);
+                        memJcRunClassName = memClass[0];
+                        // class args
+                        if (memClass.length >= 2) {
+                            memJcClassArgs.addAll(Arrays.asList(memClass[1].split(":")));
+                        }
+                    }
+                    break;
+                case MEMJC_OPTION_CLASSPATH:
+                    if (memArgs.length >= 2) {
+                        String sep = getOptionSeparator();
+                        memJcClassPaths.addAll(Arrays.asList(memArgs[1].split(sep)));
+                    }
+                    break;
                 default:
-                    showUsage(); throw new RuntimeException("");
+                    throw new RuntimeException("Unrecognized option: " + arg);
                 }
                 break;
             case ARGFILE:
@@ -63,10 +98,37 @@ public class Options {
             }
         }
 
-        // default option
+        // default java option
         if (!opts.contains("-cp") && !opts.contains("-classpath")) {
             opts.add("-cp");
-            opts.add(System.getProperty("user.dir"));
+            String classPath = System.getenv("CLASSPATH");
+            if (classPath == null) {
+                opts.add(System.getProperty("user.dir"));
+            } else {
+                opts.add(classPath);
+            }
+        }
+
+        // default memjc option
+        String[] cps = new String[] {"-cp", "-classpath" };
+        for (String cp : cps) {
+            int cpIndex = opts.indexOf(cp);
+            if (cpIndex != -1 && (cpIndex + 1) < opts.size()) {
+                String javacCp = opts.get(cpIndex + 1);
+                String sep = getOptionSeparator();
+                memJcClassPaths.addAll(Arrays.asList(javacCp.split(sep)));
+            }
+        }
+
+        return true;
+    }
+
+    private static String getOptionSeparator() {
+
+        if (File.separatorChar == '\\') {
+            return ";"; // windows
+        } else {
+            return ":"; // unix
         }
     }
 
@@ -99,23 +161,14 @@ public class Options {
     }
 
     public static void showUsage() {
+
+        String sep = getOptionSeparator();
         System.out.println("Usage: memjc <memjc options> <javac options> <source files>");
+        System.out.println("Version: " + MEMJC_VERSION);
         System.out.println("memjc Options:");
-        System.out.println("  -memjc-out Output class file");
-    }
-
-    public void debug() {
-
-        System.out.println("debug start");
-
-        System.out.println("memJcOut:" + memJcOut);
-        for (String opt : opts) {
-            System.out.println("opt:" + opt);
-        }
-        for (String file : files) {
-            System.out.println("file:" + file);
-        }
-
-        System.out.println("debug end");
+        System.out.println("  " + MEMJC_OPTION_HELP + " Show usage");
+        System.out.println("  " + MEMJC_OPTION_OUT + " Output class file");
+        System.out.println("  " + MEMJC_OPTION_RUN + ":<classname>[:<arg1>:<arg2>...] main class");
+        System.out.println("  " + MEMJC_OPTION_CLASSPATH + ":<classpath>[" + sep + "<classpath1>" + sep + "<classpath2>...] java class path");
     }
 }
