@@ -28,6 +28,7 @@ public final class Options {
     private static final String MEMJC_VERSION = "1.1";
 
     private static final String MEMJC_PREFIX = "-M";
+    private static final String MEMJC_LONG_PREFIX = "--M";
     private static final String MEMJC_OPTION_HELP = MEMJC_PREFIX + "help";
     private static final String MEMJC_OPTION_OUT = MEMJC_PREFIX + "out";
     private static final String MEMJC_OPTION_RUN = MEMJC_PREFIX + "main";
@@ -57,6 +58,9 @@ public final class Options {
             switch (isType(arg)) {
             case MEMJCOPTION:
                 String[] memArgs = arg.split(":", 2);
+                if (memArgs[0].startsWith(MEMJC_LONG_PREFIX)) {
+                    memArgs[0] = memArgs[0].replaceFirst(MEMJC_LONG_PREFIX, MEMJC_PREFIX);
+                }
                 switch (memArgs[0]) {
                 case MEMJC_OPTION_HELP:
                     showUsage();
@@ -138,7 +142,7 @@ public final class Options {
             return Type.ARGFILE;
         } else if (arg.endsWith(".java")) {
             return Type.JAVAFILE;
-        } else if (arg.startsWith(MEMJC_PREFIX)) {
+        } else if (arg.startsWith(MEMJC_PREFIX) || arg.startsWith(MEMJC_LONG_PREFIX)) {
             return Type.MEMJCOPTION;
         } else {
             return Type.OPTION;
@@ -165,7 +169,7 @@ public final class Options {
         String sep = getOptionSeparator();
         System.out.println("Usage: memjc <memjc options> <javac options> <source files>");
         System.out.println("Version: " + MEMJC_VERSION);
-        System.out.println("memjc Options:");
+        System.out.println("memjc Options (prefix is " + MEMJC_PREFIX + " or " + MEMJC_LONG_PREFIX + "):");
         System.out.println("  " + MEMJC_OPTION_HELP + " Show usage");
         System.out.println("  " + MEMJC_OPTION_OUT + " Output class file");
         System.out.println("  " + MEMJC_OPTION_RUN + ":<classname>[:<arg1>:<arg2>...] main class");
