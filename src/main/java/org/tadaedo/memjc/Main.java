@@ -36,7 +36,7 @@ public final class Main {
                 return;
             }
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            System.err.println(ex.getMessage());
             Options.showUsage();
             return;
         }
@@ -58,7 +58,11 @@ public final class Main {
             }
 
         } catch (Exception ex) {
-            System.out.println(ex.toString());
+            if (options.memJcErrDetail) {
+                ex.printStackTrace(System.err);
+            } else {
+                System.err.println(ex.toString());
+            }
         }
     }
 }

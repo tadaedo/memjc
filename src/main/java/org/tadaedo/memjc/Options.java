@@ -33,6 +33,7 @@ public final class Options {
     private static final String MEMJC_OPTION_OUT = MEMJC_PREFIX + "out";
     private static final String MEMJC_OPTION_RUN = MEMJC_PREFIX + "main";
     private static final String MEMJC_OPTION_CLASSPATH = MEMJC_PREFIX + "cp";
+    private static final String MEMJC_OPTION_ERR_DETAIL = MEMJC_PREFIX + "debug";
 
     public enum Type {
         JAVAFILE,
@@ -48,6 +49,7 @@ public final class Options {
     // memjc options
     public boolean memJcOut = false;
     public boolean memJcRun = false;
+    public boolean memJcErrDetail = false;
     public String memJcRunClassName = "";
     public final List<String> memJcClassArgs = new ArrayList<>();
     public final List<String> memJcClassPaths = new ArrayList<>();
@@ -84,6 +86,9 @@ public final class Options {
                         String sep = getOptionSeparator();
                         memJcClassPaths.addAll(Arrays.asList(memArgs[1].split(sep)));
                     }
+                    break;
+                case MEMJC_OPTION_ERR_DETAIL:
+                    memJcErrDetail = true;
                     break;
                 default:
                     throw new RuntimeException("Unrecognized option: " + arg);
